@@ -22,7 +22,7 @@
     <ProjectGuid>{121171B1-AFB8-45ED-A960-CDDD09EC6461}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>MMeter</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.10586.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.10240.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
