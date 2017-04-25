@@ -101,12 +101,12 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
-      <AdditionalIncludeDirectories>../MMeter;$(CPPLibs)\opencv\build\include;$(CPPLibs)\log4cpp\log4cpp-vs2015-master\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MMeter;$(CPPLibs)\opencv\build\include;$(CPPLibs)\log4cpp\log4cpp-vs2015-master\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(CPPLibs)\opencv\build\x64\vc14\lib;C:\Users\gudim\documents\visual studio 2015\Projects\TestOpenCV\x64\Debug;$(CPPLibs)\log4cpp\log4cpp-vs2015-master\msvc14\log4cppLIB\Debug\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CPPLibs)\opencv\build\x64\vc14\lib;x64\Debug;$(CPPLibs)\log4cpp\log4cpp-vs2015-master\msvc14\log4cppLIB\Debug\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>opencv_world320d.lib;log4cppD.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -136,7 +136,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Users\gudim\Documents\Visual Studio 2015\Projects\TestOpenCV\MMeter;C:\Users\gudim\Downloads\opencv\build\include;c:\Users\gudim\Downloads\log4cpp111\log4cpp-vs2015-master\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MMeter;$(CPPLibs)\opencv\build\include;$(CPPLibs)\log4cpp\log4cpp-vs2015-master\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -144,7 +144,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>opencv_world320.lib;log4cppLIB.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Users\gudim\Downloads\opencv\build\x64\vc14\lib;C:\Users\gudim\Downloads\log4cpp111\log4cpp-vs2015-master\msvc14\log4cppLIB\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CPPLibs)\opencv\build\x64\vc14\lib;$(CPPLibs)\log4cpp\log4cpp-vs2015-master\msvc14\log4cppLIB\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
