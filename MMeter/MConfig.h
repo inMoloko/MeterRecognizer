@@ -41,6 +41,14 @@ public:
 		return _ocrMaxDist;
 	}
 
+	float getMinLine_IsPercentageOfMinDimentionOfImage() const{
+		return _minLine_IsPercentageOfMinDimentionOfImage;
+	}
+
+	float getMaxLineGap() const {
+		return _maxLineGap;
+	}
+
 	int getRotationDegrees() const {
 		return _rotationDegrees;
 	}
@@ -67,6 +75,8 @@ private:
 	bool _fullDebugOn;
 	int _rotationDegrees;
 	float _ocrMaxDist;
+	float _minLine_IsPercentageOfMinDimentionOfImage;
+	float _maxLineGap;
 	int _digitMinHeight;
 	int _digitMaxHeight;
 	int _digitYAlignment;

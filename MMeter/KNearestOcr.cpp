@@ -93,9 +93,9 @@ char KNearestOcr::recognize(const cv::Mat& img) {
 			&& dists.at<float>(0, 0) < _config.getOcrMaxDist()) {
 			cres = '0' + (int)result;
 		}
-		else if (rlog.isInfoEnabled()) {
-			rlog << log4cpp::Priority::INFO << "OCR rejected: " << (int)result;
-		}
+		//else if (rlog.isInfoEnabled()) {
+			//rlog << log4cpp::Priority::INFO << "OCR rejected: " << (int)result;
+		//}
 		rlog << log4cpp::Priority::DEBUG << "results: " << results;
 		rlog << log4cpp::Priority::DEBUG << "neighborResponses: " << neighborResponses;
 		rlog << log4cpp::Priority::DEBUG << "dists: " << dists;

@@ -8,6 +8,8 @@
 #include <windows.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/opencv.hpp>
+
 #include "Helpers.h"
 #include <log4cpp/Category.hh>
 #include <log4cpp/Appender.hh>
@@ -18,6 +20,7 @@
 #include <log4cpp/SimpleLayout.hh>
 #include <log4cpp/Priority.hh>
 #include <fstream>
+#include "IndicationNumber.h"
 
 
 namespace MMeter
@@ -47,7 +50,6 @@ namespace MMeter
 			return a_radius > b_radius;
 		}
 	};
-
 
 	myclass::~myclass()
 	{
@@ -80,25 +82,35 @@ namespace MMeter
 		_digits.clear();
 		_img = cv::imread(_imagePath.c_str());
 		cvtColor(_img, _imgGray, CV_BGR2GRAY);
-
-		rotate(_config.getRotationDegrees());
+		//cv::equalizeHist(_imgGray, _imgGray);
 		
-		float skew_deg = detectSkew();
-		rotate(skew_deg);
+		//rotate(_config.getRotationDegrees());
+		
+		float skew_deg = detectSkew2(); //получение угла повора картинки в градусах
+		rotate(skew_deg); // попорот картинки
+		std::vector<std::vector<IndicationNumber>> iNums = findCountersandGetiNums(); // итеративный поиск контуров и упор€дочивание их
+		std::vector<std::vector<char>> rNums = fullRecognize(iNums); //распознование каждого контура
+		std::string answer = rNumsAnalyse(rNums); // выборка из всех полученных результатов. генераци€ лучшего из них
+		std::cout << answer;
+		char * writablee = new char[answer.size() + 1];
+		std::copy(answer.begin(), answer.end(), writablee);
+		writablee[answer.size()] = '\0';
+		return writablee;
+
+
+
 		if (_config.getFullDebugOn())
 		{
-
 			cv::imwrite(_workPath + _imageFileName + "_getMeterValue_lines.jpg", _img);
 			cv::imwrite(_workPath + _imageFileName + "_getMeterValue_rotated.jpg", _imgGray);
+			cv::imwrite(_workPath + _imageFileName + "_getMeterValue_equalizeHist.jpg", _imgEqualized);
 		}
 		findCounterDigits();
-
-		
-		
+		//findCounterDigitsManyParams();
 		KNearestOcr ocr(_config);
 		
 		if (!ocr.loadTrainingData()) {
-			std::cout << "Failed to load OCR training data\n";
+			std::cout << "Failed to load OCR training data\n"; 
 			return "Error: не удалось загрузить данные дл€ тренировки";
 		}
 		
@@ -114,6 +126,7 @@ namespace MMeter
 		return writable;
 	}
 
+
 	void myclass::learn() {
 
 		_config.loadConfig(_workPath);
@@ -126,11 +139,10 @@ namespace MMeter
 
 		rotate(_config.getRotationDegrees());
 
-		float skew_deg = detectSkew();
+		float skew_deg = detectSkew2();
 		rotate(skew_deg);
 		if (_config.getFullDebugOn())
 		{
-
 			cv::imwrite(_workPath + _imageFileName + "getMeterValue_lines.jpg", _img);
 			cv::imwrite(_workPath + _imageFileName + "getMeterValue_rotated.jpg", _imgGray);
 		}
@@ -156,8 +168,39 @@ namespace MMeter
 		ocr.saveTrainingData();
 	}
 
+	std::string myclass::rNumsAnalyse(std::vector<std::vector<char>> rNums) {
+		std::string result = "";
+		for each (std::vector<char> rNum in rNums)
+		{
+			//счетчик частоты по€влени€ цифры
+			int cur[10] = { 0,0,0,0,0,0,0,0,0,0 };
+
+			for (int i = 0; i < rNum.size(); i++)
+			{
+				if (rNum[i] != '?') cur[rNum[i] - '0']++;
+			}
+			int maxV = 0;
+			int maxIt = -1;
+			//поиск самой часто встречающейс€ цифры
+			for (int i = 0; i < 10; i++)
+			{
+				if (cur[i] > maxV)
+				{
+					maxV = cur[i];
+					maxIt = i;
+				}
+			}
+			//выводим тольно
+			if (maxIt != -1) result += maxIt + '0';
+		}
+		return result;
+	}
+
 	//ѕри дальнейших расчетах надо учитывать, что мы не поворачиваем окружность и дл€ анализа взаимного расположени€ окружности и 
 	float myclass::getMeterCircleRadius() {
+
+		return min(_img.rows / 4, _img.cols / 4);
+
 		int sensitivity = 100;
 		int low_b = 0, low_g = 0, low_r = 255 - sensitivity;
 		int high_b = 255, high_g = sensitivity, high_r = 255;
@@ -400,7 +443,6 @@ namespace MMeter
 			_img = img_rotated;
 		}
 	}
-
 	/**
 	* ќтрисока линий на картинке
 	*/
@@ -416,17 +458,23 @@ namespace MMeter
 			cv::line(_img, pt1, pt2, cv::Scalar(255, 0, 0), 1);
 		}
 	}
-
-	/**
-	* ќтрисока линий на картинке
-	*/
 	void myclass::drawLines(std::vector<cv::Vec4i>& lines, int xoff, int yoff) {
 		for (size_t i = 0; i < lines.size(); i++) {
 			cv::line(_img, cv::Point(lines[i][0] + xoff, lines[i][1] + yoff),
 				cv::Point(lines[i][2] + xoff, lines[i][3] + yoff), cv::Scalar(255, 0, 0), 1);
 		}
 	}
-
+	void myclass::drawLines(std::vector<cv::Vec4i>& lines, bool flag)
+		{
+			// draw lines
+			for (size_t i = 0; i < lines.size(); i++)
+			{
+				line(_img,
+					cv::Point(lines[i][0], lines[i][1]),
+					cv::Point(lines[i][2], lines[i][3]),
+					cv::Scalar(0, 0, 255), 2);
+			}
+		}
 	/**
 	* ќпределение поворота картинки (+- 30 градусов) по горизонтали.
 	*/
@@ -434,14 +482,14 @@ namespace MMeter
 		log4cpp::Category& rlog = log4cpp::Category::getRoot();
 
 		cv::Mat edges;
-		cv::Canny(_imgGray, edges, 100, 200);
-
+		cv::Canny(_imgGray, edges, _config.getCannyThreshold1Lines() , _config.getCannyThreshold2Lines());
 		cv::imwrite(_workPath + _imageFileName + "_getMeterValue_lines_edges.jpg", edges);
 
 
 		// находим линии
 		std::vector<cv::Vec2f> lines;
-		cv::HoughLines(edges, lines, 1, CV_PI / 180.f, 40);
+		cv::HoughLines(edges, lines, 1, CV_PI / 180.f, 140);
+
 
 		// фильтруем линии и находим среднее
 		std::vector<cv::Vec2f> filteredLines;
@@ -449,9 +497,12 @@ namespace MMeter
 		float theta_max = 120.f * CV_PI / 180.0f;
 		float theta_avr = 0.f;
 		float theta_deg = 0.f;
-		for (size_t i = 0; i < lines.size(); i++) {
+		int sz = lines.size();
+		for (size_t i = 0; i < lines.size(); i++)
+		{
 			float theta = lines[i][1];
-			if (theta >= theta_min && theta <= theta_max) {
+			if (theta >= theta_min && theta <= theta_max )
+			{
 				filteredLines.push_back(lines[i]);
 				theta_avr += theta;
 			}
@@ -470,6 +521,55 @@ namespace MMeter
 		}
 
 		return theta_deg;
+	}
+	float myclass::detectSkew2()
+	{
+		log4cpp::Category& rlog = log4cpp::Category::getRoot();
+
+		cv::Mat edges;
+		cv::Canny(_imgGray, edges, _config.getCannyThreshold1Lines(), _config.getCannyThreshold2Lines());
+		cv::imwrite(_workPath + _imageFileName + "_getMeterValue_lines_edges.jpg", edges);
+
+		// находим линии
+		std::vector<cv::Vec4i> lines;
+		cv::Size s = _img.size();
+		int minLineSize = min(s.height, s.width) *  _config.getMinLine_IsPercentageOfMinDimentionOfImage() / 100;
+		HoughLinesP(edges, lines, 1, CV_PI / 180.f, 140, minLineSize, _config.getMaxLineGap());// нужно подумать насчет Gap
+
+		// фильтруем линии
+		std::vector<cv::Vec4i> filteredLines;
+		float min_horise_degree_in_radians = 30.f * CV_PI / 180.f;
+		float angle_avr = 0.f;
+		float angle_deg = 0.f;
+		for (size_t i = 0; i < lines.size(); i++)
+		{		//		  x1		  y1			x2			y2  http://docs.opencv.org/3.2.0/dd/d1a/group__imgproc__feature.html#ga8618180a5948286384e3b7ca02f6feeb
+				//(lines[i][0], lines[i][1]) (lines[i][2], lines[i][3])
+			float x1 = lines[i][0]; float x2 = lines[i][2]; float y1 = lines[i][1]; float y2 = lines[i][3];
+
+			//угловой коэффициент == тангенсу угла наклона пр€мой.
+			float angle_koeff = (y2 - y1) / (x2 - x1);
+			//угол поворота пр€мой
+			float angle = atan(angle_koeff);
+
+			if (fabs((double)angle) < min_horise_degree_in_radians)
+			{
+				filteredLines.push_back(lines[i]);
+				angle_avr += angle;
+			}
+		}
+
+		if (filteredLines.size() > 0) {
+			angle_avr /= filteredLines.size();
+			angle_deg = (angle_avr * 180.f / CV_PI);// -90;
+			rlog.info("detectSkew: %.1f deg", angle_deg);
+		}
+		else
+		{
+			rlog.warn("failed to detect skew");
+		}
+		drawLines(filteredLines, true);
+		cv::imwrite(_workPath + _imageFileName + "_getMeterValue_lines.jpg", _img);
+		return angle_deg;
 	}
 
 	/*
@@ -524,19 +624,140 @@ namespace MMeter
 		}
 	}
 
+	std::vector<std::vector<IndicationNumber>> myclass::findCountersandGetiNums(){
+		const int n = 5; //кол-во итераций
+		//коэффициенты дл€ Canny
+		int thrs1[n] = { 100,80,50,30,90 }; 
+		int thrs2[n] = { 200,120,100,80,160 };
+		std::vector<std::vector<IndicationNumber>> iNums;
+		
+		for (int i = 0; i < n; i++)
+		{
+			_digits.clear();
+			_numGrayImgages.clear();
+			
+			_stringID = std::to_string(i); //не забудь инициализировать _stringID дл€ логировани€ картинок
+			std::vector<cv::Rect> rects = findCounterDigits(thrs1[i], thrs2[i]); // поиск контуров - пр€моугольников
+			std::vector<int> averages;
+
+			for (int k = 0; k < rects.size(); k++) 
+			{
+				int existRectID = -1;
+				//ищем уже добавленный iNum
+				for (int j = 0; j < iNums.size(); j++)
+				{
+					int average_x = getiNumAverageX(iNums[j]);
+					if (abs(average_x - rects[k].x) < 7) //sdasd
+						existRectID = j;
+				}
+				//если такого iNum в списке iNums еще нет
+				if (existRectID != -1) 
+					iNums[existRectID].push_back(IndicationNumber(i, _numGrayImgages[k], _digits[k], rects[k]));
+				else
+				//устанавливаем новый на свое место так, чтобы сохран€лась упор€доченность по х
+				{
+					std::vector<IndicationNumber> newINum;
+					newINum.push_back(IndicationNumber(i, _numGrayImgages[k], _digits[k], rects[k]));
+
+					int cnt = 0;
+					for (cnt = 0; cnt < iNums.size() ; cnt++)
+					{
+						int average_x = getiNumAverageX(iNums[cnt]);
+
+						if (rects[k].x <= average_x) break;
+					}
+					iNums.insert(iNums.begin() + cnt, newINum);
+				}
+			}
+ 		}
+		//распознаем и выводим результат в дебаге
+		if (_config.getDebugOn()) coutRecognizediNums(iNums);
+		return iNums;
+	}
+
+	std::vector<std::vector<char>> myclass::fullRecognize(std::vector<std::vector<IndicationNumber> > iNums) {
+		KNearestOcr ocr(_config);
+
+		if (!ocr.loadTrainingData()) 
+			std::cout << "Failed to load OCR training data\n";
+		else
+			std::cout << "OCR training data loaded.\n";
+	
+		std::vector<std::vector<char>> rNums;
+		for each (std::vector<IndicationNumber> iNum in iNums)
+		{
+			std::vector<char> rNum;
+			for each (IndicationNumber inum in iNum)
+			{
+				rNum.push_back(ocr.recognize(inum._numEdge));
+			}
+			rNums.push_back(rNum);
+		}
+		return rNums;
+	}
+
+	void myclass::coutRecognized(std::vector<std::vector<char>> rNums) {
+		for each (std::vector<char> rNum in rNums)
+		{
+			for each (char rnum in rNum)
+			{
+				std::cout << rnum;
+			}
+			std::cout << std::endl;
+		}
+	}
+
+	void myclass::coutRecognizediNums(std::vector<std::vector<IndicationNumber> > iNums) {
+
+		KNearestOcr ocr(_config);
+
+		if (!ocr.loadTrainingData())
+			std::cout << "Failed to load OCR training data\n";
+		else
+			std::cout << "OCR training data loaded.\n";
+
+		int i = 0;
+		for each (std::vector<IndicationNumber> iNum in iNums)
+		{
+			for each (IndicationNumber inum in iNum)
+			{
+				std::cout << ocr.recognize( inum._numEdge) << "  ";
+				cv::imwrite(_workPath + _imageFileName + std::to_string(i) + "_IndicationNumber.jpg", inum._numEdge);
+				i++;
+			}
+			std::cout << std::endl;
+		}
+	}
+
+	int myclass::getiNumAverageX(std::vector<IndicationNumber> iNum) {
+		int average_x = 0;
+		for each (IndicationNumber inum in iNum)
+		{
+			average_x += inum._numAlignedBoundingBox.x;
+		}
+		average_x /= iNum.size();
+		return average_x;
+	}
 	/**
 	* ѕоиск контуров цифр
 	*/
-	void myclass::findCounterDigits() {
+	std::vector<cv::Rect> myclass::findCounterDigits(int cannyThreshld1, int cannyThreshld2) {
 		//log4cpp::Category& rlog = log4cpp::Category::getRoot();
 
 		// edge image
 		cv::Mat edges;
-		cv::Canny(_imgGray, edges, _config.getCannyThreshold1Digits(), _config.getCannyThreshold2Digits());
+		cv::Mat curGray = _imgGray.clone();
+
+		if (cannyThreshld1 == 0 && cannyThreshld2 == 0)
+			cv::Canny(curGray, edges, _config.getCannyThreshold1Digits(), _config.getCannyThreshold2Digits());
+		else 
+			cv::Canny(curGray, edges, cannyThreshld1, cannyThreshld2);
 
 		if (_config.getFullDebugOn()) {
 			//cv::imshow("edges", edges);
-			cv::imwrite(_workPath + _imageFileName + "_getMeterValue_edges.jpg", edges);
+			cv::imwrite(_workPath + _imageFileName
+				+ "_" + _stringID + "_" +  
+				"_getMeterValue_edges.jpg", edges);
 		}		
 
 		cv::Mat img_ret = edges.clone();
@@ -565,13 +786,13 @@ namespace MMeter
 
 			if (tmpRes.size() >= 2)
 			{
-				cv::Mat _imgtemp = _imgGray.clone();			
+				cv::Mat _imgtemp = curGray.clone();
 
 				for (int i = 0; i < tmpRes.size(); ++i)
 				{
 					cv::rectangle(_imgtemp, tmpRes[i], cv::Scalar(255), 2);
 				}				
-				cv::imshow("Show boxes", _imgtemp);
+				//cv::imshow("Show boxes", _imgtemp);
 				int key = cv::waitKey(0);				
 
 			}
@@ -594,19 +815,27 @@ namespace MMeter
 			cv::Mat cont = cv::Mat::zeros(edges.rows, edges.cols, CV_8UC1);
 			cv::drawContours(cont, filteredContours, -1, cv::Scalar(300,0,0));
 			//cv::imshow("contours", cont);
-			cv::imwrite(_workPath + _imageFileName + "_getMeterValue_contours.jpg", cont);
+			cv::imwrite(_workPath + _imageFileName
+				+ "_" + _stringID + "_" +
+				"_getMeterValue_contours.jpg", cont);
 		}
 
 		// cut out found rectangles from edged image
 		for (int i = 0; i < alignedBoundingBoxes.size(); ++i) {
 			cv::Rect roi = alignedBoundingBoxes[i];
 			_digits.push_back(img_ret(roi));
+			_numGrayImgages.push_back(curGray(roi));
+			
 			if (_config.getFullDebugOn()) {
-				cv::rectangle(_imgGray, roi, cv::Scalar(255), 2);
+				cv::rectangle(curGray, roi, cv::Scalar(255), 2);
 			}
 		}
 		if (_config.getFullDebugOn())
-			cv::imwrite(_workPath + _imageFileName + "_getMeterValue_alignedBoundingBoxes.jpg", _imgGray);
+			cv::imwrite(_workPath + _imageFileName
+				+ "_" + _stringID + "_" +
+				"_getMeterValue_alignedBoundingBoxes.jpg", curGray);
+
+		return alignedBoundingBoxes;
 	}
 
 }

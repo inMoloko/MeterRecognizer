@@ -9,6 +9,7 @@
 #include <vector>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "MConfig.h"
+#include "IndicationNumber.h"
 
 namespace MMeter
 {
@@ -21,6 +22,9 @@ namespace MMeter
 		void process2();
 		float getMeterCircleRadius();
 		char* getMeterValue();
+		std::string rNumsAnalyse(std::vector<std::vector<char>> rNums);
+		void findBIggestCircle();
+		void findrectangle();
 		void learn();
 		std::vector<cv::Mat> getOutput();
 		void configureLogging(const std::string & priority, bool toConsole);
@@ -30,16 +34,24 @@ namespace MMeter
 	private:
 		void learnOcr();
 		void rotate(double rotationDegrees);
-		void findCounterDigits();
+		std::vector<cv::Rect> findCounterDigits(int cannyThreshld1 = 0, int cannyThreshld2 = 0);
 		
 		void findAlignedBoxes(std::vector<cv::Rect>::const_iterator begin,
 			std::vector<cv::Rect>::const_iterator end, std::vector<cv::Rect>& result, float meterCircleRadius);
 		float detectSkew();
+		float detectSkew2();
 		void drawLines(std::vector<cv::Vec2f>& lines);
 		void drawLines(std::vector<cv::Vec4i>& lines, int xoff = 0, int yoff = 0);
+		void drawLines(std::vector<cv::Vec4i>& lines, bool flag);
 		cv::Mat cannyEdges();
 		void filterContours(std::vector<std::vector<cv::Point> >& contours, std::vector<cv::Vec4i>& hierarchy, std::vector<cv::Rect>& boundingBoxes,
 			std::vector<std::vector<cv::Point> >& filteredContours, float meterCircleRadius);
+		std::vector<std::vector<IndicationNumber>> findCountersandGetiNums();
+		std::vector<std::vector<char>> fullRecognize(std::vector<std::vector<IndicationNumber>> iNums);
+		void coutRecognized(std::vector<std::vector<char>> rNums);
+		void coutRecognizediNums(std::vector<std::vector<IndicationNumber> > iNums);
+		int getiNumAverageX(std::vector<IndicationNumber> iNum);
+
 
 		double x;
 		double y;
@@ -50,11 +62,14 @@ namespace MMeter
 
 		cv::Mat _img;
 		cv::Mat _imgGray;
+		cv::Mat _imgEqualized;
 		std::vector<cv::Mat> _digits;
+		std::vector<cv::Mat> _numGrayImgages;
 		//Config _config;
 		bool _debugWindow;
 		bool _debugSkew = true;
 		bool _debugEdges = true;
 		bool _debugDigits  = true;
+		std::string _stringID = "";
 	};
 }

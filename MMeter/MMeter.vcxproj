@@ -153,6 +153,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Helpers.h" />
+    <ClInclude Include="IndicationNumber.h" />
     <ClInclude Include="KNearestOcr.h" />
     <ClInclude Include="MConfig.h" />
     <ClInclude Include="myclass.h" />
@@ -160,6 +161,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Helpers.cpp" />
+    <ClCompile Include="IndicationNumber.cpp" />
     <ClCompile Include="KNearestOcr.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MConfig.cpp" />
