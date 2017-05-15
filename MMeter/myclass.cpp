@@ -147,6 +147,7 @@ namespace MMeter
 					counter = 1;
 				}
 			}
+			if (counter > 1) rectDists.erase(rectDists.begin() + rectDists.size() - counter, rectDists.begin() + rectDists.size()-1);
 			rectDists[rectDists.size()-1].push_back(counter);
 			//сортируем по количеству попаданий
 			std::sort(rectDists.begin(), rectDists.end(), orderByCountforDISTS);
