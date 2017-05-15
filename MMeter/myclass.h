@@ -22,9 +22,9 @@ namespace MMeter
 		void process2();
 		float getMeterCircleRadius();
 		char* getMeterValue();
-		std::string rNumsAnalyse(std::vector<std::vector<char>> rNums);
-		void findBIggestCircle();
-		void findrectangle();
+		std::vector<std::vector<int>> filterRectDists(std::vector<std::vector<int>> rectDists);
+		std::vector<std::vector<int>> getRectDists(std::vector<std::vector<IndicationNumber>> iNums);
+		std::string iNumsAnalyse(std::vector<std::vector<IndicationNumber>>& iNums, std::vector<int>& rNumsQuality);
 		void learn();
 		std::vector<cv::Mat> getOutput();
 		void configureLogging(const std::string & priority, bool toConsole);
@@ -47,11 +47,10 @@ namespace MMeter
 		void filterContours(std::vector<std::vector<cv::Point> >& contours, std::vector<cv::Vec4i>& hierarchy, std::vector<cv::Rect>& boundingBoxes,
 			std::vector<std::vector<cv::Point> >& filteredContours, float meterCircleRadius);
 		std::vector<std::vector<IndicationNumber>> findCountersandGetiNums();
-		std::vector<std::vector<char>> fullRecognize(std::vector<std::vector<IndicationNumber>> iNums);
+		void fullRecognize(std::vector<std::vector<IndicationNumber>>& iNums);
 		void coutRecognized(std::vector<std::vector<char>> rNums);
-		void coutRecognizediNums(std::vector<std::vector<IndicationNumber> > iNums);
+		void coutRecognizediNums(std::vector<std::vector<IndicationNumber> >& iNums);
 		int getiNumAverageX(std::vector<IndicationNumber> iNum);
-
 
 		double x;
 		double y;
@@ -62,6 +61,7 @@ namespace MMeter
 
 		cv::Mat _img;
 		cv::Mat _imgGray;
+		cv::Mat _tmpGray;
 		cv::Mat _imgEqualized;
 		std::vector<cv::Mat> _digits;
 		std::vector<cv::Mat> _numGrayImgages;

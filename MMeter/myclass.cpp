@@ -22,6 +22,9 @@
 #include <fstream>
 #include "IndicationNumber.h"
 
+bool orderByDistforDISTS(std::vector<int> i, std::vector<int> j) { return (i[2]<j[2]); }
+bool orderByCountforDISTS(std::vector<int> i, std::vector<int> j) { return (i[3]>j[3]); }
+
 
 namespace MMeter
 {
@@ -83,21 +86,20 @@ namespace MMeter
 		_img = cv::imread(_imagePath.c_str());
 		cvtColor(_img, _imgGray, CV_BGR2GRAY);
 		//cv::equalizeHist(_imgGray, _imgGray);
-		
 		//rotate(_config.getRotationDegrees());
 		
 		float skew_deg = detectSkew2(); //получение угла повора картинки в градусах
 		rotate(skew_deg); // попорот картинки
-		std::vector<std::vector<IndicationNumber>> iNums = findCountersandGetiNums(); // итеративный поиск контуров и упорядочивание их
-		std::vector<std::vector<char>> rNums = fullRecognize(iNums); //распознование каждого контура
-		std::string answer = rNumsAnalyse(rNums); // выборка из всех полученных результатов. генерация лучшего из них
-		std::cout << answer;
+		std::vector<std::vector<IndicationNumber>> iNums = findCountersandGetiNums(); // итеративный поиск контуров и упорядочивание их и распознавание
+		std::vector<std::vector<int>> rectDists = getRectDists(iNums); //поиск расстояний между прямоугольниками цифрами уже распознанных показаний
+		rectDists = filterRectDists(rectDists); // фильтрация и выбор упорядоченных по качеству расстояний	
+
+		std::string answer = "end";
+
 		char * writablee = new char[answer.size() + 1];
 		std::copy(answer.begin(), answer.end(), writablee);
 		writablee[answer.size()] = '\0';
 		return writablee;
-
-
 
 		if (_config.getFullDebugOn())
 		{
@@ -124,6 +126,96 @@ namespace MMeter
 		std::copy(result.begin(), result.end(), writable);
 		writable[result.size()] = '\0';
 		return writable;
+	}
+	std::vector<std::vector<int>> myclass::filterRectDists(std::vector<std::vector<int>> rectDists) {
+		if (rectDists.size() != 0) {
+			//сортируем по возрастанию ширины между прямышами
+			std::sort(rectDists.begin(), rectDists.end(), orderByDistforDISTS);
+
+			//пока ширина не меняется - считаем количество попаданий, после чего удаляем лишнее и добавляем количество в структуру
+			int cur = rectDists[0][2]; int counter = 1;
+			for (int i = 0; i < rectDists.size() - 1; i++) {
+				if (rectDists[i+1][2] == cur) 
+					counter++;
+				else {
+					if (counter > 1) {
+						rectDists.erase(rectDists.begin() + i + 1 - counter, rectDists.begin() + i);
+						i = i - counter + 1;
+					}
+					rectDists[i].push_back(counter);
+					cur = rectDists[i+1][2];
+					counter = 1;
+				}
+			}
+			rectDists[rectDists.size()-1].push_back(counter);
+			//сортируем по количеству попаданий
+			std::sort(rectDists.begin(), rectDists.end(), orderByCountforDISTS);
+
+			if (_config.getDebugOn()) {
+				for (int i = 0; i < rectDists.size(); i++)
+				{
+					for each (int  item in rectDists[i])
+					{
+						std::cout << item << "  ";
+					}
+					std::cout << std::endl;
+				}
+				std::cout << std::endl;
+			}
+			return rectDists;
+		}
+	}
+	std::vector<std::vector<int>> myclass::getRectDists(std::vector<std::vector<IndicationNumber>> iNums) {
+		std::vector<int> quality; 
+		iNumsAnalyse(iNums, quality); //убираем нераспознанные прямоугольники, вычисляем качество распознанных
+		if (_config.getDebugOn()) coutRecognizediNums(iNums); // выводим то, что распозналось на данный момент
+		int average_width = 0; 
+		int cnt = 0;
+		//вычислим среднюю ширину прямоуголников
+		for each (std::vector<IndicationNumber> iNum in iNums) {
+			for each (IndicationNumber inum in iNum) {
+				if (iNum[0]._recognized != '?') {
+					average_width += inum._numAlignedBoundingBox.width;
+					cnt++;
+				}
+			}
+		}
+		average_width /= cnt; //средняя ширина распознанных
+		
+		std::vector<std::vector<int>> dists; //dists[i][0] - aliBox1.X, dists[i][1] - aliBox2.X,  dists[i][2] - dist
+
+		for (int i = 0; i < iNums.size(); i++) {
+			for (int j = i+1; j < iNums.size(); j++) {
+				//сравниваются все распознанные пары прямоуголников
+				int n = -1; //число вписываемых прямоугольников между iым jым
+				int dist = 0; //результирующее растояние между прямышами
+				int between = abs(iNums[i][0]._numAlignedBoundingBox.x - iNums[j][0]._numAlignedBoundingBox.x) - iNums[i][0]._numAlignedBoundingBox.width; //расстояние между iым jым
+				do
+				{
+					n++;
+					dist = ((between - average_width * n) / (n + 1)); // расстояние для n прямоугольников
+					if (dist >= average_width && dist <= average_width * 2) { //условия принятия расстояния в рассмотрение
+						std::vector<int> dst; 
+						dst.push_back(iNums[i][0]._numAlignedBoundingBox.x); //координата х левого прмяыша
+						dst.push_back(iNums[j][0]._numAlignedBoundingBox.x); //координата х правого прмяыша
+						dst.push_back(dist); //результирующее растояние между прямышами
+						dists.push_back(dst);
+					}
+				} while (between > average_width * n); //пока между iым и jым прямоугольниками можно вписать n прямоугольников
+			}
+		}
+		if (_config.getDebugOn()) {
+			for (int i = 0; i < dists.size(); i++)
+			{
+				for each (int  item in dists[i])
+				{
+					std::cout << item << "  ";
+				}
+				std::cout << std::endl;
+			}
+			std::cout << std::endl;
+		}
+		return dists;
 	}
 
 
@@ -168,16 +260,20 @@ namespace MMeter
 		ocr.saveTrainingData();
 	}
 
-	std::string myclass::rNumsAnalyse(std::vector<std::vector<char>> rNums) {
+	std::string myclass::iNumsAnalyse(std::vector<std::vector<IndicationNumber>>& iNums, std::vector<int>& numsQuality) {
 		std::string result = "";
-		for each (std::vector<char> rNum in rNums)
+		
+		for (int j = 0; j < iNums.size(); j++)
 		{
+			numsQuality.push_back(0);
+		//for each (std::vector<char> rNum in rNums)
 			//счетчик частоты появления цифры
 			int cur[10] = { 0,0,0,0,0,0,0,0,0,0 };
 
-			for (int i = 0; i < rNum.size(); i++)
+			for (int i = 0; i < iNums[j].size(); i++)
 			{
-				if (rNum[i] != '?') cur[rNum[i] - '0']++;
+				if (iNums[j][i]._recognized != '?')
+					cur[iNums[j][i]._recognized - '0']++;
 			}
 			int maxV = 0;
 			int maxIt = -1;
@@ -190,8 +286,29 @@ namespace MMeter
 					maxIt = i;
 				}
 			}
-			//выводим тольно
-			if (maxIt != -1) result += maxIt + '0';
+
+			//устанавлваем лучшие распознанные результаты на первые позиции
+			if (maxIt != -1) {
+				for (int i = 0; i < iNums[j].size(); i++) {
+					if (iNums[j][i]._recognized - '0' == maxIt){
+						IndicationNumber tmp = iNums[j][0];
+						iNums[j][0] = iNums[j][i];
+						iNums[j][i] = tmp;
+						break;
+					}
+				}
+				numsQuality[j] = cur[maxIt];
+				//генерим результат - строку
+				result += maxIt + '0';
+			}
+
+			//убираем нераспознанные контуры
+			if (iNums[j][0]._recognized == '?')
+			{
+				iNums.erase(iNums.begin() + j);
+				numsQuality.erase(numsQuality.begin() + j);
+				j--;
+			}
 		}
 		return result;
 	}
@@ -627,10 +744,20 @@ namespace MMeter
 	std::vector<std::vector<IndicationNumber>> myclass::findCountersandGetiNums(){
 		const int n = 5; //кол-во итераций
 		//коэффициенты для Canny
-		int thrs1[n] = { 100,80,50,30,90 }; 
-		int thrs2[n] = { 200,120,100,80,160 };
+		/*int thrs1[n] = { 100,80,50,30,90,120,170,50, 10, 40 }; 
+		int thrs2[n] = { 200,120,100,80,160,250,300,200,90, 130 };*/
+		int thrs1[n] = { 100,80,50,30,90};
+		int thrs2[n] = { 200,120,100,80,160};
 		std::vector<std::vector<IndicationNumber>> iNums;
 		
+		KNearestOcr ocr(_config);
+
+		if (!ocr.loadTrainingData())
+			std::cout << "Failed to load OCR training data\n";
+		else
+			std::cout << "OCR training data loaded.\n";
+		_tmpGray = _imgGray.clone();
+
 		for (int i = 0; i < n; i++)
 		{
 			_digits.clear();
@@ -638,10 +765,10 @@ namespace MMeter
 			
 			_stringID = std::to_string(i); //не забудь инициализировать _stringID для логирования картинок
 			std::vector<cv::Rect> rects = findCounterDigits(thrs1[i], thrs2[i]); // поиск контуров - прямоугольников
-			std::vector<int> averages;
-
+			int sz = rects.size();
 			for (int k = 0; k < rects.size(); k++) 
 			{
+				//std::cout << rects[k].x << std::endl;
 				int existRectID = -1;
 				//ищем уже добавленный iNum
 				for (int j = 0; j < iNums.size(); j++)
@@ -652,12 +779,12 @@ namespace MMeter
 				}
 				//если такого iNum в списке iNums еще нет
 				if (existRectID != -1) 
-					iNums[existRectID].push_back(IndicationNumber(i, _numGrayImgages[k], _digits[k], rects[k]));
+					iNums[existRectID].push_back(IndicationNumber(i, _numGrayImgages[k], _digits[k], rects[k], ocr.recognize(_digits[k])));
 				else
 				//устанавливаем новый на свое место так, чтобы сохранялась упорядоченность по х
 				{
 					std::vector<IndicationNumber> newINum;
-					newINum.push_back(IndicationNumber(i, _numGrayImgages[k], _digits[k], rects[k]));
+					newINum.push_back(IndicationNumber(i, _numGrayImgages[k], _digits[k], rects[k], ocr.recognize(_digits[k])));
 
 					int cnt = 0;
 					for (cnt = 0; cnt < iNums.size() ; cnt++)
@@ -670,58 +797,16 @@ namespace MMeter
 				}
 			}
  		}
-		//распознаем и выводим результат в дебаге
-		if (_config.getDebugOn()) coutRecognizediNums(iNums);
 		return iNums;
 	}
 
-	std::vector<std::vector<char>> myclass::fullRecognize(std::vector<std::vector<IndicationNumber> > iNums) {
-		KNearestOcr ocr(_config);
-
-		if (!ocr.loadTrainingData()) 
-			std::cout << "Failed to load OCR training data\n";
-		else
-			std::cout << "OCR training data loaded.\n";
-	
-		std::vector<std::vector<char>> rNums;
-		for each (std::vector<IndicationNumber> iNum in iNums)
-		{
-			std::vector<char> rNum;
-			for each (IndicationNumber inum in iNum)
-			{
-				rNum.push_back(ocr.recognize(inum._numEdge));
-			}
-			rNums.push_back(rNum);
-		}
-		return rNums;
-	}
-
-	void myclass::coutRecognized(std::vector<std::vector<char>> rNums) {
-		for each (std::vector<char> rNum in rNums)
-		{
-			for each (char rnum in rNum)
-			{
-				std::cout << rnum;
-			}
-			std::cout << std::endl;
-		}
-	}
-
-	void myclass::coutRecognizediNums(std::vector<std::vector<IndicationNumber> > iNums) {
-
-		KNearestOcr ocr(_config);
-
-		if (!ocr.loadTrainingData())
-			std::cout << "Failed to load OCR training data\n";
-		else
-			std::cout << "OCR training data loaded.\n";
-
+	void myclass::coutRecognizediNums(std::vector<std::vector<IndicationNumber> >& iNums) {
 		int i = 0;
 		for each (std::vector<IndicationNumber> iNum in iNums)
 		{
 			for each (IndicationNumber inum in iNum)
 			{
-				std::cout << ocr.recognize( inum._numEdge) << "  ";
+				std::cout << inum._recognized << "  ";
 				cv::imwrite(_workPath + _imageFileName + std::to_string(i) + "_IndicationNumber.jpg", inum._numEdge);
 				i++;
 			}
@@ -774,8 +859,9 @@ namespace MMeter
 
 		float radius = getMeterCircleRadius();
 		// filter contours by bounding rect size
+		int e = contours.size();
 		filterContours(contours, hierarchy, boundingBoxes, filteredContours, radius);
-
+		e = contours.size();
 		//rlog << log4cpp::Priority::INFO << "number of filtered contours: " << filteredContours.size();
 
 		// find bounding boxes that are aligned at y position
@@ -798,6 +884,10 @@ namespace MMeter
 			}
 
 
+			tmpRes.size();
+			
+			
+			
 			if (tmpRes.size()>=4 && tmpRes.size()<=8 && 
 				(alignedBoundingBoxes.size() == 0 ||
 				tmpRes.size() > alignedBoundingBoxes.size() && (tmpRes[0].height -alignedBoundingBoxes[0].height)>-alignedBoundingBoxes[0].height*0.2 ||
@@ -827,13 +917,13 @@ namespace MMeter
 			_numGrayImgages.push_back(curGray(roi));
 			
 			if (_config.getFullDebugOn()) {
-				cv::rectangle(curGray, roi, cv::Scalar(255), 2);
+				cv::rectangle(_tmpGray, roi, cv::Scalar(0), 1);
 			}
 		}
 		if (_config.getFullDebugOn())
 			cv::imwrite(_workPath + _imageFileName
 				+ "_" + _stringID + "_" +
-				"_getMeterValue_alignedBoundingBoxes.jpg", curGray);
+				"_getMeterValue_alignedBoundingBoxes.jpg", _tmpGray);
 
 		return alignedBoundingBoxes;
 	}
