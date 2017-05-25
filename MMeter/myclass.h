@@ -22,8 +22,12 @@ namespace MMeter
 		void process2();
 		float getMeterCircleRadius();
 		char* getMeterValue();
+		void findOtherCounters(std::vector<std::vector<IndicationNumber>>& iNums);
+		IndicationNumber getINumByRect(cv::Rect rect);
+		void findOtherCountersandGetiNums(std::vector<std::vector<int>>& rectDists, std::vector<std::vector<int>>& filteredRectDists, std::vector<std::vector<IndicationNumber>>& iNums, int average_width);
 		std::vector<std::vector<int>> filterRectDists(std::vector<std::vector<int>> rectDists);
-		std::vector<std::vector<int>> getRectDists(std::vector<std::vector<IndicationNumber>> iNums);
+		int getAveraveWidth(std::vector<std::vector<IndicationNumber>> iNums);
+		std::vector<std::vector<int>> getRectDists(std::vector<std::vector<IndicationNumber>> iNums, int average_width);
 		std::string iNumsAnalyse(std::vector<std::vector<IndicationNumber>>& iNums, std::vector<int>& rNumsQuality);
 		void learn();
 		std::vector<cv::Mat> getOutput();
