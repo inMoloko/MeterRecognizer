@@ -87,7 +87,6 @@ namespace MMeter
 		cvtColor(_img, _imgGray, CV_BGR2GRAY);
 		//cv::equalizeHist(_imgGray, _imgGray);
 		//rotate(_config.getRotationDegrees());
-		
 		float skew_deg = detectSkew2(); //получение угла повора картинки в градусах
 		rotate(skew_deg); // попорот картинки
 		std::vector<std::vector<IndicationNumber>> iNums = findCountersandGetiNums(); // итеративный поиск контуров, упорядочивание их и распознавание
@@ -293,6 +292,9 @@ namespace MMeter
 			}
 
 	}
+	/**
+	* Выбирает лучшие ррасстояния 
+	*/
 	std::vector<std::vector<int>> myclass::filterRectDists(std::vector<std::vector<int>> rectDists) {
 		if (rectDists.size() != 0) {
 			//сортируем по возрастанию ширины между прямышами
@@ -389,6 +391,51 @@ namespace MMeter
 		return dists;
 	}
 
+	void myclass::readAllfilesAndLearn(KNearestOcr& ocr) {
+		
+		std::vector<int> tq = _config.getTestsQuantity();
+
+		for (int i = 0; i < 10; i++)
+		{
+			for (int j = 1; j <= tq[i] ; j++)
+			{
+				std::string path = _workPath + +"learning\\" + std::to_string(i) +"\\" + std::to_string(j) + ".jpg";
+				_img = cv::imread(path);
+
+				if (_img.data != NULL)
+				{
+					cv::Mat edged;
+					cv::Canny(_img, edged, _config.getCannyThreshold1Digits(), _config.getCannyThreshold2Digits());
+					ocr.learn(edged, i);
+					if (_config.getFullDebugOn())
+						cv::imwrite(_workPath + +"learning\\trashes\\" + std::to_string(i) + "_" + std::to_string(j) + ".jpg", edged);
+				}
+			}
+		}
+	}
+
+	void myclass::autoLearn() {
+		_config.loadConfig(_workPath);
+		configureLogging("INFO", true);
+		log4cpp::Category& rlog = log4cpp::Category::getRoot();
+		rlog << log4cpp::Priority::INFO << "Start!";
+		
+		KNearestOcr ocr(_config);
+		//если файла нет, то создаем его с заготовочкой
+		if (ocr.is_empty(std::ifstream(_config.getTrainingDataFilename())))
+		{
+			ocr.saveTrainingData();
+			std::cout << "OCR training data is empty. It's fixed\n";
+		}
+
+		if (!ocr.loadTrainingData()) {
+			std::cout << "Failed to load OCR training data\n";
+			return;
+		}
+
+		readAllfilesAndLearn(ocr);
+		ocr.saveTrainingData();
+	}
 
 	void myclass::learn() {
 
@@ -413,14 +460,23 @@ namespace MMeter
 
 
 		KNearestOcr ocr(_config);
+		//если файла нет, то создаем его с заготовочкой
+		if (ocr.is_empty(std::ifstream(_config.getTrainingDataFilename())))
+		{
+			ocr.saveTrainingData();
+			std::cout << "OCR training data is empty. It's fixed\n";
+		}
+
 		if (!ocr.loadTrainingData()) {
 			std::cout << "Failed to load OCR training data\n";
 			return;
 		}
+
 		std::cout << "OCR training data loaded.\n";
 		std::cout << "<q> to quit.\n";
 		int key = 0;
-		key = ocr.learn(_digits);
+
+		key = ocr.learn(_numGrayImgages, _workPath);
 		std::cout << std::endl;
 
 		if (key == 'q' || key == 's') {
@@ -430,7 +486,9 @@ namespace MMeter
 
 		ocr.saveTrainingData();
 	}
-
+	/**
+	* Выставляет разпознанные значения и ставит их на первое место, убират нераспознанные денные, вычисляет "качество" распознавания
+	*/
 	std::string myclass::iNumsAnalyse(std::vector<std::vector<IndicationNumber>>& iNums, std::vector<int>& numsQuality) {
 		std::string result = "";
 		
@@ -691,7 +749,7 @@ namespace MMeter
 		 std::cout << "OCR training data loaded.\n";
 		 std::cout << "<q> to quit.\n";
 		 int key = 0;
-		 key = ocr.learn(_digits);
+		 key = ocr.learn(_digits, _workPath);
 		 std::cout << std::endl;
 
 		 if (key == 'q' || key == 's') {

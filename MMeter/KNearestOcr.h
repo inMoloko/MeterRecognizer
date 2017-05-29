@@ -17,9 +17,12 @@ public:
 	KNearestOcr(const MConfig & config);
 	virtual ~KNearestOcr();
 
-	int learn(const cv::Mat & img);
-	int learn(const std::vector<cv::Mat> & images);
+	void learn(cv::Mat edges, int answer);
+
+	int learn(const cv::Mat & img, std::string workPath, std::vector<int>& testsQuantity);
+	int learn(const std::vector<cv::Mat> & images, std::string workPath);
 	void saveTrainingData();
+	bool is_empty(std::ifstream & pFile);
 	bool loadTrainingData();
 
 	char recognize(const cv::Mat & img);

@@ -4,6 +4,7 @@
 #define CONFIG_H_
 
 #include <string>
+#include <vector>
 
 class MConfig
 {
@@ -68,6 +69,37 @@ public:
 	int getCannyThreshold2Digits() const {
 		return _cannyThreshold2Digits;
 	}
+
+	std::vector<int> getTestsQuantity() {
+		std::vector<int> res;
+		std::string podstr = "";
+		for (int i = 0; i < _testsQuantity.size(); i++)
+		{
+			if (_testsQuantity[i] != ' ')
+			{
+				podstr += _testsQuantity[i];
+			}
+			else
+			{
+				res.push_back(std::stoi(podstr));
+				podstr = "";
+			}
+		}
+		return res;
+	}
+
+	void setTestsQuantity(std::vector<int> VecStr) {
+		std::string tq = "";
+
+		for each (int item in VecStr)
+		{
+			tq += std::to_string(item) + " ";
+		}
+		
+		_testsQuantity = tq;
+	}
+
+
 	~MConfig();
 
 private:
@@ -85,6 +117,7 @@ private:
 	int _cannyThreshold1Lines;
 	int _cannyThreshold2Lines;
 	std::string _trainingDataFilename;
+	std::string _testsQuantity;
 
 	std::string _workPath;
 };

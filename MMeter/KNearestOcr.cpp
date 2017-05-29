@@ -8,7 +8,7 @@
 #include <log4cpp/Category.hh>
 #include <log4cpp/Priority.hh>
 #include <exception>
-
+#include <fstream>
 
 
 KNearestOcr::KNearestOcr()
@@ -26,25 +26,55 @@ KNearestOcr::~KNearestOcr() {
 /**
 * Обучение одной цифры
 */
-int KNearestOcr::learn(const cv::Mat & img) {
+void KNearestOcr::learn(cv::Mat edges, int answer) {
+	_responses.push_back(cv::Mat(1, 1, CV_32F, answer));
+	_samples.push_back(prepareSample(edges));
+}
+
+int KNearestOcr::learn(const cv::Mat & img, std::string workPath, std::vector<int>& testsQuantity) {
 	cv::imshow("Learn", img);
 	int key = cv::waitKey(0);
 	if (key >= '0' && key <= '9') {
+		
+		cv::Mat edges;
+		cv::Canny(img, edges, _config.getCannyThreshold1Digits(), _config.getCannyThreshold2Digits());
 		_responses.push_back(cv::Mat(1, 1, CV_32F, (float)key - '0'));
-		_samples.push_back(prepareSample(img));
-	}
+		_samples.push_back(prepareSample(edges));
+		
+		testsQuantity[key - '0']++;
+		_config.setTestsQuantity(testsQuantity);
 
+		cv::imwrite(workPath + "learning\\" + std::to_string(key - '0') + "\\" + std::to_string(testsQuantity[key - '0']) + ".jpg", img);
+		//cv::imwrite(workPath + "learning\\" + std::to_string(key - '0') + "\\" + std::to_string(testsQuantity[key - '0']) + "_.jpg", edges);
+		//
+		//cv::Mat imgClone = img.clone();
+		//cv::equalizeHist(imgClone, imgClone);
+		//cv::Canny(imgClone, edges, _config.getCannyThreshold1Digits(), _config.getCannyThreshold2Digits());
+
+		//cv::imwrite(workPath + "equalizeHist\\" + std::to_string(key - '0') + "\\" + std::to_string(testsQuantity[key - '0']) + ".jpg", imgClone);
+		//cv::imwrite(workPath + "equalizeHist\\" + std::to_string(key - '0') + "\\" + std::to_string(testsQuantity[key - '0']) + "_.jpg", edges);
+		//
+		//cv::threshold(img, imgClone, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+		//cv::Canny(imgClone, edges, _config.getCannyThreshold1Digits(), _config.getCannyThreshold2Digits());
+		//
+		//cv::imwrite(workPath + "otsu\\" + std::to_string(key - '0') + "\\" + std::to_string(testsQuantity[key - '0']) + ".jpg", imgClone);
+		//cv::imwrite(workPath + "otsu\\" + std::to_string(key - '0') + "\\" + std::to_string(testsQuantity[key - '0']) + "_.jpg", edges);
+
+		_config.saveConfig();
+	}
 	return key;
 }
 
 /**
 * Обучение вектора цифр
 */
-int KNearestOcr::learn(const std::vector<cv::Mat>& images) {
-	int key = 0;
+int KNearestOcr::learn(const std::vector<cv::Mat>& images, std::string workPath) {
+	int key = 0; 
+	std::vector<int> tq = _config.getTestsQuantity();
+
 	for (std::vector<cv::Mat>::const_iterator it = images.begin();
 	it < images.end() && key != 's' && key != 'q'; ++it) {
-		key = learn(*it);
+		key = learn(*it, workPath, tq);
 	}
 	return key;
 }
@@ -58,7 +88,10 @@ void KNearestOcr::saveTrainingData() {
 	fs << "responses" << _responses;
 	fs.release();
 }
-
+bool KNearestOcr::is_empty(std::ifstream& pFile)
+{
+	return pFile.peek() == std::ifstream::traits_type::eof();
+}
 /**
 * Загружаем данные для тернировки и инициализируем модель
 */

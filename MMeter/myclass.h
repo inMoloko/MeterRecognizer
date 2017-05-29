@@ -10,6 +10,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include "MConfig.h"
 #include "IndicationNumber.h"
+#include "KNearestOcr.h"
 
 namespace MMeter
 {
@@ -24,10 +25,13 @@ namespace MMeter
 		char* getMeterValue();
 		void findOtherCounters(std::vector<std::vector<IndicationNumber>>& iNums);
 		IndicationNumber getINumByRect(cv::Rect rect);
+		cv::Mat cutEmptySpaces(cv::Mat edges);
 		void findOtherCountersandGetiNums(std::vector<std::vector<int>>& rectDists, std::vector<std::vector<int>>& filteredRectDists, std::vector<std::vector<IndicationNumber>>& iNums, int average_width);
 		std::vector<std::vector<int>> filterRectDists(std::vector<std::vector<int>> rectDists);
 		int getAveraveWidth(std::vector<std::vector<IndicationNumber>> iNums);
 		std::vector<std::vector<int>> getRectDists(std::vector<std::vector<IndicationNumber>> iNums, int average_width);
+		void readAllfilesAndLearn(KNearestOcr& ocr);
+		void autoLearn();
 		std::string iNumsAnalyse(std::vector<std::vector<IndicationNumber>>& iNums, std::vector<int>& rNumsQuality);
 		void learn();
 		std::vector<cv::Mat> getOutput();
