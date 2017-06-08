@@ -45,21 +45,6 @@ int KNearestOcr::learn(const cv::Mat & img, std::string workPath, std::vector<in
 		_config.setTestsQuantity(testsQuantity);
 
 		cv::imwrite(workPath + "learning\\" + std::to_string(key - '0') + "\\" + std::to_string(testsQuantity[key - '0']) + ".jpg", img);
-		//cv::imwrite(workPath + "learning\\" + std::to_string(key - '0') + "\\" + std::to_string(testsQuantity[key - '0']) + "_.jpg", edges);
-		//
-		//cv::Mat imgClone = img.clone();
-		//cv::equalizeHist(imgClone, imgClone);
-		//cv::Canny(imgClone, edges, _config.getCannyThreshold1Digits(), _config.getCannyThreshold2Digits());
-
-		//cv::imwrite(workPath + "equalizeHist\\" + std::to_string(key - '0') + "\\" + std::to_string(testsQuantity[key - '0']) + ".jpg", imgClone);
-		//cv::imwrite(workPath + "equalizeHist\\" + std::to_string(key - '0') + "\\" + std::to_string(testsQuantity[key - '0']) + "_.jpg", edges);
-		//
-		//cv::threshold(img, imgClone, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-		//cv::Canny(imgClone, edges, _config.getCannyThreshold1Digits(), _config.getCannyThreshold2Digits());
-		//
-		//cv::imwrite(workPath + "otsu\\" + std::to_string(key - '0') + "\\" + std::to_string(testsQuantity[key - '0']) + ".jpg", imgClone);
-		//cv::imwrite(workPath + "otsu\\" + std::to_string(key - '0') + "\\" + std::to_string(testsQuantity[key - '0']) + "_.jpg", edges);
-
 		_config.saveConfig();
 	}
 	return key;
@@ -95,14 +80,15 @@ bool KNearestOcr::is_empty(std::ifstream& pFile)
 /**
 * Загружаем данные для тернировки и инициализируем модель
 */
-bool KNearestOcr::loadTrainingData() {
+bool KNearestOcr::loadTrainingData(bool isNotTraining) {
 	cv::FileStorage fs(_config.getTrainingDataFilename(), cv::FileStorage::READ);
 	if (fs.isOpened()) {
 		fs["samples"] >> _samples;
 		fs["responses"] >> _responses;
 		fs.release();
 
-		initModel();
+		if (isNotTraining)
+			initModel();
 	}
 	else {
 		return false;
@@ -114,6 +100,7 @@ bool KNearestOcr::loadTrainingData() {
 * Разпознование одной цифры
 */
 char KNearestOcr::recognize(const cv::Mat& img) {
+
 	log4cpp::Category& rlog = log4cpp::Category::getRoot();
 	char cres = '?';
 	try {
@@ -122,13 +109,12 @@ char KNearestOcr::recognize(const cv::Mat& img) {
 		}
 		cv::Mat results, neighborResponses, dists;
 		float result = _pModel->findNearest(prepareSample(img), 2, results, neighborResponses, dists);
+
 		if (0 == int(neighborResponses.at<float>(0, 0) - neighborResponses.at<float>(0, 1))
 			&& dists.at<float>(0, 0) < _config.getOcrMaxDist()) {
 			cres = '0' + (int)result;
 		}
-		//else if (rlog.isInfoEnabled()) {
-			//rlog << log4cpp::Priority::INFO << "OCR rejected: " << (int)result;
-		//}
+
 		rlog << log4cpp::Priority::DEBUG << "results: " << results;
 		rlog << log4cpp::Priority::DEBUG << "neighborResponses: " << neighborResponses;
 		rlog << log4cpp::Priority::DEBUG << "dists: " << dists;

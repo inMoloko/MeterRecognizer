@@ -1,10 +1,6 @@
 #pragma once
 
-//#ifdef MMeter_EXPORTS
-//#define MMeter_API __declspec(dllexport) 
-//#else
-//#define MMeter_API __declspec(dllimport)
-//#endif
+
 
 #include <vector>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -18,15 +14,15 @@ namespace MMeter
 	{
 	public:
 		myclass(char* imagePath, char* workPath);
+		myclass(std::string imagePath, char* workPath);
 		double sumX_Y();
-		void process();
 		void process2();
 		float getMeterCircleRadius();
 		char* getMeterValue();
-		void findOtherCounters(std::vector<std::vector<IndicationNumber>>& iNums);
-		IndicationNumber getINumByRect(cv::Rect rect);
-		cv::Mat cutEmptySpaces(cv::Mat edges);
-		void findOtherCountersandGetiNums(std::vector<std::vector<int>>& rectDists, std::vector<std::vector<int>>& filteredRectDists, std::vector<std::vector<IndicationNumber>>& iNums, int average_width);
+		std::string getAnswerByiNums(std::vector<std::vector<IndicationNumber>>& iNums);
+		void findOtherCounters(std::vector<std::vector<IndicationNumber>>& iNums, KNearestOcr ocr);
+		IndicationNumber getINumByRect(cv::Rect rect, KNearestOcr ocr);
+		void findOtherCountersandGetiNums(std::vector<std::vector<int>>& rectDists, std::vector<std::vector<int>>& filteredRectDists, std::vector<std::vector<IndicationNumber>>& iNums, int average_width, KNearestOcr ocr);
 		std::vector<std::vector<int>> filterRectDists(std::vector<std::vector<int>> rectDists);
 		int getAveraveWidth(std::vector<std::vector<IndicationNumber>> iNums);
 		std::vector<std::vector<int>> getRectDists(std::vector<std::vector<IndicationNumber>> iNums, int average_width);
@@ -51,12 +47,9 @@ namespace MMeter
 		void drawLines(std::vector<cv::Vec2f>& lines);
 		void drawLines(std::vector<cv::Vec4i>& lines, int xoff = 0, int yoff = 0);
 		void drawLines(std::vector<cv::Vec4i>& lines, bool flag);
-		cv::Mat cannyEdges();
 		void filterContours(std::vector<std::vector<cv::Point> >& contours, std::vector<cv::Vec4i>& hierarchy, std::vector<cv::Rect>& boundingBoxes,
 			std::vector<std::vector<cv::Point> >& filteredContours, float meterCircleRadius);
-		std::vector<std::vector<IndicationNumber>> findCountersandGetiNums();
-		void fullRecognize(std::vector<std::vector<IndicationNumber>>& iNums);
-		void coutRecognized(std::vector<std::vector<char>> rNums);
+		std::vector<std::vector<IndicationNumber>> findCountersandGetiNums(KNearestOcr ocr);
 		void coutRecognizediNums(std::vector<std::vector<IndicationNumber> >& iNums);
 		int getiNumAverageX(std::vector<IndicationNumber> iNum);
 

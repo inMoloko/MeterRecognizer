@@ -23,7 +23,7 @@ public:
 	int learn(const std::vector<cv::Mat> & images, std::string workPath);
 	void saveTrainingData();
 	bool is_empty(std::ifstream & pFile);
-	bool loadTrainingData();
+	bool loadTrainingData(bool isNotTraining);
 
 	char recognize(const cv::Mat & img);
 	std::string recognize(const std::vector<cv::Mat> & images);
